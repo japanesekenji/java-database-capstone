@@ -1,93 +1,169 @@
 ## MySQL Database Design
 
-### Table: patients
-- id: INT, Primary Key, Auto Increment
-- first_name: VARCHAR(100), Not Null
-- last_name: VARCHAR(100), Not Null
-- date_of_birth: DATE, Not Null
-- gender: VARCHAR(10) -- e.g., 'Male', 'Female', 'Other'
-- email: VARCHAR(255), Unique, Not Null
-- phone_number: VARCHAR(20), Not Null
-- address: VARCHAR(255)
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Stores core patient demographic information. Email and phone for communication, marked UNIQUE for email to prevent duplicate patient entries by email. Timestamps for audit.
+This document outlines the relational database schema for the clinic management system, using MySQL. It defines the tables, their columns, data types, primary keys, foreign key relationships, and essential constraints, reflecting the core operational data.
 
-### Table: doctors
-- id: INT, Primary Key, Auto Increment
-- first_name: VARCHAR(100), Not Null
-- last_name: VARCHAR(100), Not Null
-- specialty: VARCHAR(100), Not Null -- e.g., 'Cardiology', 'Pediatrics'
-- email: VARCHAR(255), Unique, Not Null
-- phone_number: VARCHAR(20)
-- license_number: VARCHAR(50), Unique, Not Null
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Stores doctor's professional and contact details. License number is critical and unique.
+## Table: `patients`
 
-### Table: appointments
-- id: INT, Primary Key, Auto Increment
-- doctor_id: INT, Foreign Key -> doctors(id), Not Null
-- patient_id: INT, Foreign Key -> patients(id), Not Null
-- appointment_time: DATETIME, Not Null -- The exact start time of the appointment
-- status: INT (0 = Scheduled, 1 = Completed, 2 = Cancelled, 3 = No-show), Not Null
-- reason_for_visit: TEXT -- Optional, patient's stated reason
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Core transactional table linking patients and doctors to specific time slots.
-  -- Foreign keys ensure referential integrity. Status helps track the lifecycle of an appointment.
-  -- Data retention: On patient/doctor deletion, it's advisable to use 'soft delete' (an `is_active` flag)
-  -- on patients/doctors table to preserve appointment history, rather than directly deleting records or setting FKs to NULL,
-  -- due to the critical nature of medical history. If hard deletion is required, `ON DELETE NO ACTION` and
-  -- application-level checks to prevent deletion of associated records would be safer.
+* **Purpose:** Stores core demographic and contact information for each patient. This is the central repository for patient identification and essential details.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Automatically assigned unique identifier for each patient.
+    * `first_name`: `VARCHAR(100)`, `Not Null`
+        * *Constraint:* Stores the patient's first name; must be provided.
+    * `last_name`: `VARCHAR(100)`, `Not Null`
+        * *Constraint:* Stores the patient's last name; must be provided.
+    * `date_of_birth`: `DATE`, `Not Null`
+        * *Constraint:* Stores the patient's birth date; essential for age-related medical considerations and must be provided.
+    * `gender`: `VARCHAR(10)`
+        * *Comment:* Stores biological sex or gender identity (e.g., 'Male', 'Female', 'Other'). Optional.
+    * `email`: `VARCHAR(255)`, `Unique`, `Not Null`
+        * *Constraint:* Stores the patient's email; must be unique across all patients and provided. Used for communication and login.
+    * `phone_number`: `VARCHAR(20)`, `Not Null`
+        * *Constraint:* Stores the primary phone number; must be provided for contact.
+    * `address`: `VARCHAR(255)`
+        * *Comment:* Stores the patient's physical address. Optional.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Automatically records the timestamp of record creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Automatically updates timestamp on any record modification.
 
-### Table: admin
-- id: INT, Primary Key, Auto Increment
-- username: VARCHAR(50), Unique, Not Null
-- password_hash: VARCHAR(255), Not Null -- Stores hashed passwords for security
-- email: VARCHAR(255), Unique
-- first_name: VARCHAR(100)
-- last_name: VARCHAR(100)
-- role: VARCHAR(50) -- e.g., 'SUPER_ADMIN', 'CLINIC_MANAGER', 'RECEPTIONIST'
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Manages administrative users and their access levels within the system. Password should always be hashed.
+## Table: `doctors`
 
-### Table: available_time_slots
-- id: INT, Primary Key, Auto Increment
-- doctor_id: INT, Foreign Key -> doctors(id), Not Null
-- start_time: DATETIME, Not Null
-- end_time: DATETIME, Not Null
-- is_booked: BOOLEAN, Default FALSE -- True if an appointment has been made for this slot
-- clinic_location_id: INT, Foreign Key -> clinic_locations(id) -- Optional, if doctors work at multiple locations
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Allows doctors to define their specific working hours and available slots, preventing overbooking and improving scheduling accuracy.
+* **Purpose:** Stores professional and contact information for each doctor associated with the clinic. This table includes their specialty and relevant identification.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each doctor.
+    * `first_name`: `VARCHAR(100)`, `Not Null`
+        * *Constraint:* Doctor's first name; must be provided.
+    * `last_name`: `VARCHAR(100)`, `Not Null`
+        * *Constraint:* Doctor's last name; must be provided.
+    * `specialty`: `VARCHAR(100)`, `Not Null`
+        * *Constraint:* The medical field of expertise (e.g., 'Cardiology', 'Pediatrics'); must be provided.
+    * `email`: `VARCHAR(255)`, `Unique`, `Not Null`
+        * *Constraint:* Doctor's professional email; must be unique and provided.
+    * `phone_number`: `VARCHAR(20)`
+        * *Comment:* Doctor's contact phone number. Optional.
+    * `license_number`: `VARCHAR(50)`, `Unique`, `Not Null`
+        * *Constraint:* Unique medical license number; critical for professional identification and must be provided.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of record creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last record modification.
 
-### Table: clinic_locations
-- id: INT, Primary Key, Auto Increment
-- name: VARCHAR(255), Not Null -- e.g., 'Main Clinic', 'Downtown Branch'
-- address: VARCHAR(255), Not Null
-- phone_number: VARCHAR(20)
-- email: VARCHAR(255)
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Stores information about different physical locations of the clinic, useful for larger practices.
+## Table: `appointments`
 
-### Table: payments
-- id: INT, Primary Key, Auto Increment
-- appointment_id: INT, Foreign Key -> appointments(id), Unique, Not Null
-  -- Assuming one payment record per appointment for simplicity. If partial payments, remove UNIQUE.
-- patient_id: INT, Foreign Key -> patients(id), Not Null -- Redundant but useful for direct lookups
-- amount: DECIMAL(10, 2), Not Null
-- payment_date: DATETIME, Not Null, Default CURRENT_TIMESTAMP
-- payment_method: VARCHAR(50) -- e.g., 'Credit Card', 'Cash', 'Insurance', 'Bank Transfer'
-- status: VARCHAR(20) -- e.g., 'Paid', 'Pending', 'Refunded', 'Failed'
-- transaction_id: VARCHAR(255), Unique -- Optional, for external payment gateway reference
-- created_at: DATETIME, Default CURRENT_TIMESTAMP
-- updated_at: DATETIME, Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  -- Justification: Tracks financial transactions related to appointments.
+* **Purpose:** Records every scheduled and completed interaction between a patient and a doctor. It links patients, doctors, and specific times, serving as a core transactional record.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each appointment.
+    * `doctor_id`: `INT`, **Foreign Key** `-> doctors(id)`, `Not Null`
+        * *Constraint:* Links to the doctor involved in the appointment; must be provided.
+    * `patient_id`: `INT`, **Foreign Key** `-> patients(id)`, `Not Null`
+        * *Constraint:* Links to the patient attending the appointment; must be provided.
+    * `appointment_time`: `DATETIME`, `Not Null`
+        * *Constraint:* The exact start date and time of the appointment; must be provided.
+    * `end_time`: `DATETIME`, `Not Null`
+        * *Constraint:* The calculated end date and time of the appointment; must be provided. This can be derived from `appointment_time` and a standard duration or a doctor-specific duration.
+    * `status`: `INT`, `Not Null`
+        * *Comment:* Current state of the appointment (e.g., `0 = Scheduled`, `1 = Completed`, `2 = Cancelled`, `3 = No-show`).
+    * `reason_for_visit`: `TEXT`
+        * *Comment:* Patient's stated reason or chief complaint for the visit. Optional, can be long.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of appointment booking.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last appointment modification.
+* **Relationships & Considerations:**
+    * **Patient/Doctor Deletion:** To preserve historical medical records (appointments), it's strongly recommended to use a "soft delete" mechanism for `patients` and `doctors` (e.g., an `is_active` boolean flag or `deleted_at` timestamp). Hard deletion or `ON DELETE CASCADE` is generally not advisable for this type of data due to legal and medical record retention requirements.
 
+## Table: `admin`
+
+* **Purpose:** Manages users with administrative privileges within the clinic system. This includes roles like clinic managers or receptionists who manage operations.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each admin user.
+    * `username`: `VARCHAR(50)`, `Unique`, `Not Null`
+        * *Constraint:* The login username for the admin; must be unique and provided.
+    * `password_hash`: `VARCHAR(255)`, `Not Null`
+        * *Constraint:* Stores the securely hashed version of the admin's password; must be provided. **Never store plain text passwords.**
+    * `email`: `VARCHAR(255)`, `Unique`
+        * *Constraint:* Admin's email address; unique for communication and recovery. Optional.
+    * `first_name`: `VARCHAR(100)`
+        * *Comment:* Admin's first name.
+    * `last_name`: `VARCHAR(100)`
+        * *Comment:* Admin's last name.
+    * `role`: `VARCHAR(50)`
+        * *Comment:* Defines the specific administrative role (e.g., 'SUPER_ADMIN', 'CLINIC_MANAGER', 'RECEPTIONIST'). Used for Role-Based Access Control (RBAC).
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of admin account creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last admin account modification.
+
+## Table: `available_time_slots`
+
+* **Purpose:** Defines the specific time blocks when doctors are available for appointments. This table is crucial for managing doctor schedules, preventing overbooking, and facilitating appointment booking.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each defined time slot.
+    * `doctor_id`: `INT`, **Foreign Key** `-> doctors(id)`, `Not Null`
+        * *Constraint:* Links the time slot to a specific doctor; must be provided.
+    * `start_time`: `DATETIME`, `Not Null`
+        * *Constraint:* The starting date and time of the available slot; must be provided.
+    * `end_time`: `DATETIME`, `Not Null`
+        * *Constraint:* The ending date and time of the available slot; must be provided.
+    * `is_booked`: `BOOLEAN`, `Default FALSE`
+        * *Comment:* A flag indicating whether this specific slot has been taken by an appointment. Defaults to `FALSE` (available).
+    * `clinic_location_id`: `INT`, **Foreign Key** `-> clinic_locations(id)`
+        * *Comment:* Optional link to a specific clinic location if doctors work at multiple branches.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of slot creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last slot modification (e.g., when `is_booked` status changes).
+* **Relationships & Considerations:**
+    * This table complements the `appointments` table. An `appointment` consumes an `available_time_slot`. Application logic should ensure that an `available_time_slot` marked as `is_booked = TRUE` cannot be double-booked.
+
+## Table: `clinic_locations`
+
+* **Purpose:** Stores information about the different physical branches or locations where the clinic operates. This is useful for multi-branch practices.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each clinic location.
+    * `name`: `VARCHAR(255)`, `Not Null`
+        * *Constraint:* The name of the clinic location (e.g., 'Main Clinic', 'Downtown Branch'); must be provided.
+    * `address`: `VARCHAR(255)`, `Not Null`
+        * *Constraint:* The full physical address of the clinic; must be provided.
+    * `phone_number`: `VARCHAR(20)`
+        * *Comment:* Contact phone number for the specific location. Optional.
+    * `email`: `VARCHAR(255)`
+        * *Comment:* Contact email for the specific location. Optional.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of record creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last record modification.
+
+## Table: `payments`
+
+* **Purpose:** Tracks financial transactions related to appointments, recording payments made by patients to the clinic.
+* **Columns:**
+    * `id`: `INT`, **Primary Key**, `Auto Increment`
+        * *Constraint:* Unique identifier for each payment record.
+    * `appointment_id`: `INT`, **Foreign Key** `-> appointments(id)`, `Unique`, `Not Null`
+        * *Constraint:* Links the payment to a specific appointment; must be provided. The `UNIQUE` constraint here implies a one-to-one relationship (one payment record per appointment), or a primary payment record. If multiple partial payments per appointment are allowed, this constraint would be removed.
+    * `patient_id`: `INT`, **Foreign Key** `-> patients(id)`, `Not Null`
+        * *Constraint:* Links the payment to the patient who made it; must be provided.
+    * `amount`: `DECIMAL(10, 2)`, `Not Null`
+        * *Constraint:* The monetary value of the payment; must be provided. `DECIMAL` ensures exact precision for financial data.
+    * `payment_date`: `DATETIME`, `Not Null`, `Default CURRENT_TIMESTAMP`
+        * *Constraint:* The date and time the payment was recorded; defaults to current timestamp.
+    * `payment_method`: `VARCHAR(50)`
+        * *Comment:* Describes how the payment was made (e.g., 'Credit Card', 'Cash', 'Insurance', 'Bank Transfer').
+    * `status`: `VARCHAR(20)`
+        * *Comment:* The current state of the payment (e.g., 'Paid', 'Pending', 'Refunded', 'Failed').
+    * `transaction_id`: `VARCHAR(255)`, `Unique`
+        * *Constraint:* Optional unique identifier from an external payment gateway.
+    * `created_at`: `DATETIME`, `Default CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of payment record creation.
+    * `updated_at`: `DATETIME`, `Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+        * *Comment:* Timestamp of last payment record modification.
 
 
 
@@ -97,7 +173,7 @@ This section outlines the design for MongoDB collections, chosen for their flexi
 
 ## Collection: `prescriptions`
 
-This collection stores detailed information about prescriptions issued to patients. It leverages MongoDB's flexibility to include complex structures, varying fields, and large text blocks like doctor's notes.
+This collection stores detailed information about prescriptions issued to patients. It leverages MongoDB's flexibility to include complex structures, varying fields, and large text blocks like doctor's notes. This model aligns with the "Prescription model" described previously, allowing for patient name, medication, and appointment ID to be relevant, while also accommodating more dynamic data.
 
 ### Example Document (JSON)
 
@@ -108,6 +184,7 @@ This collection stores detailed information about prescriptions issued to patien
   "doctor_id": 201, // Foreign Key to MySQL doctors.id - Links to the prescribing doctor
   "appointment_id": 501, // Foreign Key to MySQL appointments.id (Optional: Prescription might be a follow-up, not tied to a single appointment)
   "issue_date": ISODate("2025-06-05T22:30:00Z"), // Date and time the prescription was issued
+  "patientName": "John Smith", // Denormalized for convenience, but patient_id is the source of truth
   "medications": [ // An array to hold details for multiple medications within one prescription
     {
       "name": "Amoxicillin",
